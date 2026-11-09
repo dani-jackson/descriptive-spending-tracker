@@ -1,20 +1,35 @@
 import tkinter as tk
 from tkinter import ttk
+from datetime import datetime
+
 from ui.theme import apply_dark_theme
 
 
 class SummaryView(ttk.Frame):
+
     def __init__(self, parent, controller):
-        super().__init__(parent, style="Dark.TFrame")
+        super().__init__(parent)
+
+        self.parent = parent
         self.controller = controller
+
         apply_dark_theme(self)
         self.configure(style="Dark.TFrame")
 
-        # -----------------------------
-        # HEADER BAR
-        # -----------------------------
-        header = ttk.Frame(self, style="Dark.TFrame")
-        header.pack(fill="x", pady=10, padx=10)
+        # ------------------------------------
+        # HEADER
+        # ------------------------------------
+
+        header = ttk.Frame(
+            self,
+            style="Dark.TFrame"
+        )
+
+        header.pack(
+            fill="x",
+            padx=10,
+            pady=10
+        )
 
         ttk.Label(
             header,
@@ -26,141 +41,216 @@ class SummaryView(ttk.Frame):
         ttk.Button(
             header,
             text="Back",
-            style="Dark.TButton",
-            command=self.go_back
+            command=self.go_back,
+            style="Dark.TButton"
         ).pack(side="right")
 
-        # -----------------------------
-        # FETCH SUMMARY DATA
-        # -----------------------------
-        totals = controller.summary_service.monthly_totals()
-        percentages = controller.summary_service.monthly_percentages()
-        budgets = controller.summary_service.monthly_budget_report()
+        # ------------------------------------
+        # GET DATA
+        # ------------------------------------
 
-        # -----------------------------
+        today = datetime.now()
+
+        totals = controller.get_monthly_totals(
+            today.year,
+            today.month
+        )
+
+        percentages = controller.get_monthly_percentages(
+            today.year,
+            today.month
+        )
+
+        categories = controller.get_categories()
+
+        budget_lookup = {
+            c.name: c.monthly_limit
+            for c in categories
+        }
+
+        total_spending = sum(
+            totals.values()
+        )
+
+        # ------------------------------------
         # TEXT AREA
-        # -----------------------------
-        text_frame = ttk.Frame(self, style="Dark.TFrame")
-        text_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        # ------------------------------------
 
         text = tk.Text(
-            text_frame,
-            width=100,
-            height=40,
+            self,
             bg="#1e1e1e",
-            fg="#ffffff",
+            fg="white",
             insertbackground="white",
-            highlightthickness=0,
+            font=("Consolas", 11),
             borderwidth=0,
-            font=("Consolas", 11)
+            highlightthickness=0
         )
-        text.pack(fill="both", expand=True)
 
-        # -----------------------------
-        # COLOR TAGS
-        # -----------------------------
-        text.tag_configure("over", foreground="#ff6b6b")      # red
-        text.tag_configure("under", foreground="#7CFC00")     # green
-        text.tag_configure("header", foreground="#87CEFA")    # light blue
-        text.tag_configure("grid", foreground="#888888")      # gray grid lines
+        text.pack(
+            fill="both",
+            expand=True,
+            padx=10,
+            pady=10
+        )
+
+        text.tag_configure(
+            "header",
+            foreground="#87CEFA"
+        )
+
+        text.tag_configure(
+            "over",
+            foreground="#ff6b6b"
+        )
+
+        text.tag_configure(
+            "under",
+            foreground="#7CFC00"
+        )
 
         if not totals:
-            text.insert("end", "No transactions found.\n")
-        else:
-            for (year, month), cats in sorted(totals.items()):
-                text.insert("end", f"\n===== {month}/{year} =====\n", "header")
 
-                month_total = sum(abs(v) for v in cats.values())
-                text.insert("end", f"Total spending: ${month_total:.2f}\n\n")
+            text.insert(
+                "end",
+                "No spending data found.\n"
+            )
 
-                # -----------------------------------------
-                # CATEGORY ORDERING
-                # -----------------------------------------
-                special = ["Deposit", "Withdrawal"]
-                regular = [c for c in cats.keys() if c not in special]
-                regular.sort()
-                ordered = regular + special
+            text.config(state="disabled")
+            return
 
-                # -----------------------------------------
-                # TABLE HEADER
-                # -----------------------------------------
-                header_line = (
-                    f"{'Category':<15} "
-                    f"{'Spent':>10}   "
-                    f"{'Budget':>10}   "
-                    f"{'% of Total':>10}   "
-                    f"{'Status':<20}"
+        text.insert(
+            "end",
+            f"{today.strftime('%B %Y')}\n\n",
+            "header"
+        )
+
+        text.insert(
+            "end",
+            f"Total Spending: ${total_spending:.2f}\n\n"
+        )
+
+        header_line = (
+            f"{'Category':<20}"
+            f"{'Spent':>12}"
+            f"{'Budget':>12}"
+            f"{'% Total':>12}"
+            f"{'Status':>15}"
+        )
+
+        text.insert(
+            "end",
+            header_line + "\n",
+            "header"
+        )
+
+        text.insert(
+            "end",
+            "-" * 75 + "\n"
+        )
+
+        for category in sorted(totals.keys()):
+
+            spent = totals[category]
+
+            pct = percentages.get(
+                category,
+                0
+            )
+
+            budget = budget_lookup.get(
+                category
+            )
+
+            budget_str = (
+                f"${budget:.2f}"
+                if budget is not None
+                else "-"
+            )
+
+            status = ""
+
+            tag = None
+
+            if budget is not None:
+
+                if spent > budget:
+
+                    status = (
+                        f"OVER ${spent - budget:.2f}"
+                    )
+
+                    tag = "over"
+
+                else:
+
+                    status = (
+                        f"${budget - spent:.2f} left"
+                    )
+
+                    tag = "under"
+
+            line = (
+                f"{category:<20}"
+                f"${spent:>11.2f}"
+                f"{budget_str:>12}"
+                f"{pct:>11.1f}%"
+                f"{status:>15}"
+            )
+
+            if tag:
+
+                text.insert(
+                    "end",
+                    line + "\n",
+                    tag
                 )
-                text.insert("end", header_line + "\n", "header")
-                text.insert("end", "-" * 75 + "\n", "grid")
 
-                # -----------------------------------------
-                # TABLE ROWS
-                # -----------------------------------------
-                for cat in ordered:
-                    spent = abs(cats[cat])
-                    pct = percentages[(year, month)].get(cat, 0)
+            else:
 
-                    # Deposits should not show a percentage
-                    if cat == "Deposit":
-                        pct_str = "—"
-                    else:
-                        pct_str = f"{pct:>5.1f}%"
+                text.insert(
+                    "end",
+                    line + "\n"
+                )
 
-                    budget_info = budgets[(year, month)].get(cat, {})
-                    budget = budget_info.get("budget")
-                    over = budget_info.get("over")
-                    under = budget_info.get("under")
+        text.config(
+            state="disabled"
+        )
 
-                    # Budget column
-                    budget_str = "—" if budget is None else f"${budget:.2f}"
+        # ------------------------------------
+        # BACK BUTTON
+        # ------------------------------------
 
-                    # Status column
-                    if budget is None:
-                        status = ""
-                        tag = None
-                    else:
-                        if over > 0:
-                            status = f"OVER by ${over:.2f}"
-                            tag = "over"
-                        elif under > 0:
-                            status = f"under by ${under:.2f}"
-                            tag = "under"
-                        else:
-                            status = "on budget"
-                            tag = "under"
+        bottom = ttk.Frame(
+            self,
+            style="Dark.TFrame"
+        )
 
-                    # Build row
-                    line = (
-                    f"{cat:<15} "
-                    f"${spent:>9.2f}   "
-                    f"{budget_str:>10}   "
-                    f"{pct_str:>10}   "
-                    f"{status:<20}"
-)
-
-                    if tag:
-                        text.insert("end", line + "\n", tag)
-                    else:
-                        text.insert("end", line + "\n")
-
-                text.insert("end", "\n")
-
-        # -----------------------------
-        # BACK BUTTON (BOTTOM)
-        # -----------------------------
-        back_frame = ttk.Frame(self, style="Dark.TFrame")
-        back_frame.pack(pady=20)
+        bottom.pack(
+            pady=10
+        )
 
         ttk.Button(
-            back_frame,
+            bottom,
             text="Back",
-            style="Dark.TButton",
-            command=self.go_back
+            command=self.go_back,
+            style="Dark.TButton"
         ).pack()
 
+    # ------------------------------------
+    # NAVIGATION
+    # ------------------------------------
+
     def go_back(self):
+
         from ui.views.dashboard_view import DashboardView
-        for widget in self.master.winfo_children():
+
+        for widget in self.parent.winfo_children():
             widget.destroy()
-        DashboardView(self.master, self.controller).pack(fill="both", expand=True)
+
+        DashboardView(
+            self.parent,
+            self.controller
+        ).pack(
+            fill="both",
+            expand=True
+        )

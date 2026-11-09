@@ -120,6 +120,27 @@ class DatabaseRepository:
 
         self.conn.commit()
 
+    def update_account(
+        self,
+        account_id,
+        name,
+        account_type
+    ):
+
+        self.conn.execute("""
+            UPDATE accounts
+            SET
+                name = ?,
+                account_type = ?
+            WHERE id = ?
+        """, (
+            name,
+            account_type,
+            account_id
+        ))
+
+        self.conn.commit()
+
     # -----------------------------
     # CATEGORY METHODS
     # -----------------------------
@@ -184,6 +205,45 @@ class DatabaseRepository:
 
         self.conn.commit()
 
+    def update_category(
+        self,
+        category_id,
+        name,
+        monthly_limit
+    ):
+
+        self.conn.execute("""
+            UPDATE categories
+            SET
+                name = ?,
+                monthly_limit = ?
+            WHERE id = ?
+        """, (
+            name,
+            monthly_limit,
+            category_id
+        ))
+
+        self.conn.commit()
+
+    def update_category_budget(
+        self,
+        category_id,
+        monthly_limit
+    ):
+
+        self.conn.execute("""
+            UPDATE categories
+            SET
+                monthly_limit = ?
+            WHERE id = ?
+        """, (
+            monthly_limit,
+            category_id
+        ))
+
+        self.conn.commit()
+
     # -----------------------------
     # TRANSACTION METHODS
     # -----------------------------
@@ -215,11 +275,15 @@ class DatabaseRepository:
 
         self.conn.commit()
 
-    def update_transaction(self, transaction):
+    def update_transaction(
+        self,
+        transaction
+    ):
 
         self.conn.execute("""
             UPDATE transactions
             SET
+                transaction_type = ?,
                 date = ?,
                 description = ?,
                 amount = ?,
@@ -228,6 +292,7 @@ class DatabaseRepository:
                 category_id = ?
             WHERE id = ?
         """, (
+            transaction.transaction_type,
             transaction.date,
             transaction.description,
             transaction.amount,

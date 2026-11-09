@@ -1,24 +1,41 @@
 import tkinter as tk
+
 from controller import AppController
-from storage.file_storage import FileStorage
-from ui.views.account_selection_view import AccountSelectionView
+from storage.database_repository import DatabaseRepository
 
-FILENAME = "accounts.json"
+from ui.theme import apply_dark_theme
+from ui.views.dashboard_view import DashboardView
 
-root = tk.Tk()
-root.title("Budget Tracker")
-root.geometry("800x600")
 
-storage = FileStorage()
+def main():
 
-try:
-    profile = storage.load(FILENAME)
-except:
-    from model.user_profile import UserProfile
-    profile = UserProfile()
+    root = tk.Tk()
 
-controller = AppController(root, profile, storage, FILENAME)
+    root.title("Budget Tracker")
+    root.geometry("1000x700")
 
-AccountSelectionView(root, controller, storage, FILENAME).pack(fill="both", expand=True)
+    apply_dark_theme(root)
 
-root.mainloop()
+    repository = DatabaseRepository()
+
+    controller = AppController(
+        root,
+        repository
+    )
+
+    DashboardView(
+        root,
+        controller
+    ).pack(
+        fill="both",
+        expand=True
+    )
+
+    try:
+        root.mainloop()
+    finally:
+        repository.close()
+
+
+if __name__ == "__main__":
+    main()
