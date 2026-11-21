@@ -1,14 +1,30 @@
 import tkinter as tk
-from ui.controller import AppController
+
+from storage.database_repository import DatabaseRepository
+
+from controller import AppController
 from ui.views.dashboard_view import DashboardView
 
-def start_gui(account):
+
+def start_gui():
+
     root = tk.Tk()
+
     root.title("Budget Tracker")
-    root.geometry("600x400")
+    root.geometry("900x600")
 
-    controller = AppController(root, account)
+    repository = DatabaseRepository()
 
-    DashboardView(root, controller).pack(fill="both", expand=True)
+    controller = AppController(
+        root,
+        repository
+    )
+
+    DashboardView(
+        root,
+        controller
+    ).pack(fill="both", expand=True)
 
     root.mainloop()
+
+    repository.close()

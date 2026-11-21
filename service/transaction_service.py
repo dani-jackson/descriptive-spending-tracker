@@ -1,20 +1,34 @@
-from model.transaction import Deposit, Withdrawal, Purchase
+from model.transaction import Transaction
+
 
 class TransactionService:
-    def __init__(self, account):
-        self.account = account
 
-    def deposit(self, date, description, amount):
-        d = Deposit(date, description, amount)
-        self.account.add_transaction(d)
-        return d
+    def __init__(self, repository):
+        self.repository = repository
 
-    def withdraw(self, date, description, amount):
-        w = Withdrawal(date, description, amount)
-        self.account.add_transaction(w)
-        return w
+    def create_transaction(
+        self,
+        transaction_type,
+        date,
+        description,
+        amount,
+        merchant=None,
+        account_id=None,
+        category_id=None
+    ):
 
-    def purchase(self, date, description, amount, tax=0.087, fees=0, shipping=0, category=None):
-        p = Purchase(date, description, amount, tax, fees, shipping, category)
-        self.account.add_transaction(p)
-        return p
+        transaction = Transaction(
+            transaction_type=transaction_type,
+            date=date,
+            description=description,
+            amount=amount,
+            merchant=merchant,
+            account_id=account_id,
+            category_id=category_id
+        )
+
+        self.repository.add_transaction(
+            transaction
+        )
+
+        return transaction
