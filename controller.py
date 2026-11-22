@@ -1,10 +1,11 @@
-from datetime import datetime
+from datetime import datetime, date
+import calendar
 from service.transaction_service import TransactionService
 from service.summary_service import SummaryService
 from service.budget_service import BudgetService
-
 from model.account import Account
 from model.category import Category
+from model.recurring_bill import RecurringBill
 
 
 class AppController:
@@ -97,22 +98,8 @@ class AppController:
         self,
         category_id
     ):
-
-        row = self.conn.execute("""
-            SELECT *
-            FROM categories
-            WHERE id = ?
-        """, (
-            category_id,
-        )).fetchone()
-
-        if row is None:
-            return None
-
-        return Category(
-            id=row["id"],
-            name=row["name"],
-            monthly_limit=row["monthly_limit"]
+        return self.repository.get_category(
+            category_id
         )
 
     def delete_category(self, category_id):
@@ -160,6 +147,102 @@ class AppController:
     def delete_transaction(self, transaction_id):
 
         self.repository.delete_transaction(transaction_id)
+
+    # ------------------------
+    # RECURRING BILLS
+    # ------------------------
+
+    def add_recurring_bill(
+        self,
+        transaction_type,
+        description,
+        merchant,
+        amount,
+        account_id,
+        category_id,
+        day_of_month
+    ):
+        if day_of_month < 1 or day_of_month > 31:
+            raise ValueError(
+                "Day of month must be between 1 and 31."
+            )
+        
+        recurring_bill = RecurringBill(
+            transaction_type=transaction_type,
+            description=description,
+            merchant=merchant,
+            amount=amount,
+            account_id=account_id,
+            category_id=category_id,
+            day_of_month=day_of_month,
+            active=True,
+            last_generated_month=None
+        )
+
+        return self.repository.add_recurring_bill(
+            recurring_bill
+        )
+
+    def generate_recurring_transactions(self):
+
+        today = date.today()
+
+        current_month = today.strftime("%Y-%m")
+
+        bills = self.repository.get_active_recurring_bills()
+
+        for bill in bills:
+            try:
+                bill_day = min(
+                    bill["day_of_month"],
+                    calendar.monthrange(
+                        today.year,
+                        today.month
+                    )[1]
+                )
+                if bill_day > today.day:
+                    continue
+                if bill["last_generated_month"] == current_month:
+                    continue
+                transaction_date = (
+                    f"{today.year}-"
+                    f"{today.month:02d}-"
+                    f"{bill_day:02d}"
+                )
+                self.add_transaction(
+                    transaction_type=bill["transaction_type"],
+                    date=transaction_date,
+                    description=bill["description"],
+                    amount=bill["amount"],
+                    merchant=bill["merchant"],
+                    account_id=bill["account_id"],
+                    category_id=bill["category_id"]
+                )
+                self.repository.update_recurring_bill_last_generated_month(
+                    bill["id"],
+                    current_month
+                )
+
+            except Exception as ex:
+                print(
+                    f"Failed to process recurring bill "
+                    f"{bill['id']}: {ex}"
+                )
+
+    def get_active_recurring_bills(self):
+        return self.repository.get_active_recurring_bills()
+
+    def get_all_recurring_bills(self):
+        return self.repository.get_all_recurring_bills()
+
+    def enable_recurring_bill(self, bill_id):
+        self.repository.enable_recurring_bill(bill_id)
+
+    def disable_recurring_bill(self, bill_id):
+        self.repository.disable_recurring_bill(bill_id)
+
+    def delete_recurring_bill(self, bill_id):
+        self.repository.delete_recurring_bill(bill_id)
 
     # ------------------------
     # Reports

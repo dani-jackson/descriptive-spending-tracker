@@ -14,6 +14,7 @@ class DatabaseRepository:
         self.conn.execute("PRAGMA foreign_keys = ON")
 
         self.create_tables()
+        self._migrate_recurring_bills()
 
     # -----------------------------
     # DATABASE SETUP
@@ -47,6 +48,25 @@ class DatabaseRepository:
                 merchant TEXT,
                 account_id INTEGER,
                 category_id INTEGER,
+                FOREIGN KEY(account_id)
+                    REFERENCES accounts(id),
+                FOREIGN KEY(category_id)
+                    REFERENCES categories(id)
+            )
+        """)
+
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS recurring_bills (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                transaction_type TEXT NOT NULL,
+                description TEXT NOT NULL,
+                merchant TEXT,
+                amount REAL NOT NULL,
+                account_id INTEGER NOT NULL,
+                category_id INTEGER,
+                day_of_month INTEGER NOT NULL,
+                last_generated_month TEXT,
+                active INTEGER NOT NULL DEFAULT 1,
                 FOREIGN KEY(account_id)
                     REFERENCES accounts(id),
                 FOREIGN KEY(category_id)
@@ -339,6 +359,165 @@ class DatabaseRepository:
             for row in rows
         ]
 
+    # -----------------------------
+    # RECURRING BILL METHODS
+    # -----------------------------
+
+    # Add a new recurring bill
+    def add_recurring_bill(self, recurring_bill):
+        cursor = self.conn.execute("""
+            INSERT INTO recurring_bills(
+                transaction_type,
+                description,
+                merchant,
+                amount,
+                account_id,
+                category_id,
+                day_of_month,
+                last_generated_month,
+                active
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            recurring_bill.transaction_type,
+            recurring_bill.description,
+            recurring_bill.merchant,
+            recurring_bill.amount,
+            recurring_bill.account_id,
+            recurring_bill.category_id,
+            recurring_bill.day_of_month,
+            recurring_bill.last_generated_month,
+            recurring_bill.active
+        ))
+        self.conn.commit()
+        return cursor.lastrowid
+    
+    # Get all recurring bills
+    def get_all_recurring_bills(self):
+        cursor = self.conn.execute("""
+            SELECT *
+            FROM recurring_bills
+            ORDER BY description
+        """)
+        return cursor.fetchall()
+
+    # Get active recurring bills
+    def get_active_recurring_bills(self):
+        cursor = self.conn.execute("""
+            SELECT *
+            FROM recurring_bills
+            WHERE active = 1
+            ORDER BY description
+        """)
+        return cursor.fetchall()
+
+    # Get a single recurring bill
+    def get_recurring_bill(self, bill_id):
+        cursor = self.conn.execute("""
+            SELECT
+                id,
+                transaction_type,
+                description,
+                merchant,
+                amount,
+                account_id,
+                category_id,
+                day_of_month,
+                last_generated_month,
+                active
+            FROM recurring_bills
+            WHERE id = ?
+        """, (bill_id,))
+        return cursor.fetchone()
+
+    # Update a recurring bill
+    def update_recurring_bill(self, recurring_bill):
+        self.conn.execute("""
+            UPDATE recurring_bills
+            SET
+                transaction_type = ?,
+                description = ?,
+                merchant = ?,
+                amount = ?,
+                account_id = ?,
+                category_id = ?,
+                day_of_month = ?,
+                last_generated_month = ?,
+                active = ?
+            WHERE id = ?
+        """, (
+            recurring_bill.transaction_type,
+            recurring_bill.description,
+            recurring_bill.merchant,
+            recurring_bill.amount,
+            recurring_bill.account_id,
+            recurring_bill.category_id,
+            recurring_bill.day_of_month,
+            recurring_bill.last_generated_month,
+            recurring_bill.active,
+            recurring_bill.id
+            
+        ))
+        self.conn.commit()
+
+    # Delete a recurring bill
+    def delete_recurring_bill(self, bill_id):
+        self.conn.execute("""
+            DELETE FROM recurring_bills
+            WHERE id = ?
+        """, (bill_id,))
+        self.conn.commit()
+
+    # Update last generated month
+    def update_recurring_bill_last_generated_month(
+        self,
+        bill_id,
+        month
+    ):
+        self.conn.execute("""
+            UPDATE recurring_bills
+            SET last_generated_month = ?
+            WHERE id = ?
+        """, (
+            month,
+            bill_id
+        ))
+        self.conn.commit()
+
+    # Migrate to table with "Active" column
+    def _migrate_recurring_bills(self):
+        cursor = self.conn.execute("""
+            PRAGMA table_info(recurring_bills)
+        """)
+        columns = {
+            row[1]
+            for row in cursor.fetchall()
+        }
+        if "active" not in columns:
+            self.conn.execute("""
+                ALTER TABLE recurring_bills
+                ADD COLUMN active INTEGER NOT NULL DEFAULT 1
+            """)
+            self.conn.commit()
+
+    # Enable recurring bill
+    def enable_recurring_bill(self, bill_id):
+        self.conn.execute("""
+            UPDATE recurring_bills
+            SET active = 1
+            WHERE id = ?
+        """, (bill_id,))
+        self.conn.commit()
+
+    # Disable recurring bill
+    def disable_recurring_bill(self, bill_id):
+        self.conn.execute("""
+            UPDATE recurring_bills
+            SET active = 0
+            WHERE id = ?
+        """, (bill_id,))
+        self.conn.commit()
+    
     # -----------------------------
     # FILTERING
     # -----------------------------

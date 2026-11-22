@@ -1,5 +1,7 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, simpledialog
+from tkcalendar import DateEntry
+from datetime import date
 
 from model.transaction import Transaction
 from ui.theme import apply_dark_theme
@@ -67,21 +69,29 @@ class AddTransactionView(ttk.Frame):
         )
         self.type_dropdown.pack(fill="x", pady=(0, 10))
 
-        self.date_entry = self._entry(
+        ttk.Label(
             form,
-            "Date (YYYY-MM-DD)"
-        )
+            text="Date",
+            style="Dark.TLabel"
+        ).pack(anchor="w")
 
+        self.date_entry = DateEntry(
+            form,
+            style="Dark.TEntry",
+            date_pattern="yyyy-mm-dd"
+        )
+        self.date_entry.pack(
+            fill="x",
+            pady=(0, 10)
+        )
         self.desc_entry = self._entry(
             form,
             "Description"
         )
-
         self.merchant_entry = self._entry(
             form,
             "Merchant"
         )
-
         self.amount_entry = self._entry(
             form,
             "Amount"
@@ -103,7 +113,6 @@ class AddTransactionView(ttk.Frame):
             account.name: account.id
             for account in accounts
         }
-
         self.account_var = tk.StringVar()
 
         self.account_dropdown = ttk.Combobox(
@@ -113,7 +122,6 @@ class AddTransactionView(ttk.Frame):
             style="Dark.TCombobox",
             state="readonly"
         )
-
         self.account_dropdown.pack(
             fill="x",
             pady=(0, 10)
@@ -135,21 +143,40 @@ class AddTransactionView(ttk.Frame):
             category.name: category.id
             for category in categories
         }
-
         self.category_var = tk.StringVar()
+
+        self.NEW_CATEGORY_OPTION = "+ Add New Category..."
 
         self.category_dropdown = ttk.Combobox(
             form,
             textvariable=self.category_var,
-            values=list(self.category_lookup.keys()),
+            values=[
+                *self.category_lookup.keys(),
+                self.NEW_CATEGORY_OPTION
+            ],
             style="Dark.TCombobox",
             state="readonly"
         )
-
         self.category_dropdown.pack(
             fill="x",
             pady=(0, 20)
         )
+        self.category_dropdown.bind(
+            "<<ComboboxSelected>>",
+            self.on_category_selected
+        )
+
+        # --------------------------------------------------
+        # RECURRING BILLS
+        # --------------------------------------------------
+
+        self.recurring_var = tk.BooleanVar(value=False)
+
+        ttk.Checkbutton(
+            form,
+            text="Recurring Monthly Bill",
+            variable=self.recurring_var
+        ).pack(anchor="w", pady=(0, 10))
 
         # --------------------------------------------------
         # ACTIONS
@@ -175,12 +202,18 @@ class AddTransactionView(ttk.Frame):
             style="Dark.TButton"
         ).pack(side="left", padx=5)
 
+        self.status_label = ttk.Label(
+            form,
+            text="",
+            style="Dark.TLabel"
+        )
+        self.status_label.pack(pady=(10, 0))
+
     # --------------------------------------------------
     # HELPERS
     # --------------------------------------------------
 
     def _entry(self, parent, label):
-
         ttk.Label(
             parent,
             text=label,
@@ -191,58 +224,75 @@ class AddTransactionView(ttk.Frame):
             parent,
             style="Dark.TEntry"
         )
-
         entry.pack(
             fill="x",
             pady=(0, 10)
         )
-
         return entry
 
     def clear_fields(self):
-
-        self.date_entry.delete(0, tk.END)
+        self.date_entry.set_date(date.today())
         self.desc_entry.delete(0, tk.END)
         self.merchant_entry.delete(0, tk.END)
         self.amount_entry.delete(0, tk.END)
-
-        self.type_var.set(
-            Transaction.PURCHASE
-        )
-
+        self.type_var.set(Transaction.PURCHASE)
         self.account_var.set("")
         self.category_var.set("")
+        self.recurring_var.set(False)
+
+    def on_category_selected(self, event=None):
+        if self.category_var.get() != self.NEW_CATEGORY_OPTION:
+            return
+        category_name = simpledialog.askstring(
+            "New Category",
+            "Category name:"
+        )
+        if not category_name:
+            self.category_var.set("")
+            return
+        category_name = category_name.strip()
+        if not category_name:
+            self.category_var.set("")
+            return
+        if category_name in self.category_lookup:
+            self.category_var.set(category_name)
+            messagebox.showinfo(
+                "Category Exists",
+                f'"{category_name}" already exists.'
+            )
+            return
+        category_id = self.controller.add_category(
+            category_name
+        )
+        self.category_lookup[category_name] = category_id
+        self.category_dropdown["values"] = [
+            *self.category_lookup.keys(),
+            self.NEW_CATEGORY_OPTION
+        ]
+        self.category_var.set(category_name)
 
     # --------------------------------------------------
     # SAVE
     # --------------------------------------------------
 
     def save_transaction(self):
-
         try:
             amount = float(
                 self.amount_entry.get()
             )
-
         except ValueError:
-
             messagebox.showerror(
                 "Invalid Amount",
                 "Please enter a valid amount."
             )
-
             return
-
         account_id = self.account_lookup.get(
             self.account_var.get()
         )
-
         category_id = self.category_lookup.get(
             self.category_var.get()
         )
-
         try:
-
             self.controller.add_transaction(
                 transaction_type=self.type_var.get(),
                 date=self.date_entry.get(),
@@ -252,16 +302,31 @@ class AddTransactionView(ttk.Frame):
                 account_id=account_id,
                 category_id=category_id
             )
-
-            messagebox.showinfo(
-                "Success",
-                "Transaction added successfully."
-            )
-
+            if self.recurring_var.get():
+                self.controller.add_recurring_bill(
+                    transaction_type=self.type_var.get(),
+                    description=self.desc_entry.get(),
+                    merchant=self.merchant_entry.get(),
+                    amount=amount,
+                    account_id=account_id,
+                    category_id=category_id,
+                    day_of_month=self.date_entry.get_date().day
+                )
             self.clear_fields()
+            self.desc_entry.focus_set()
 
+            message = "Transaction added successfully."
+            if self.recurring_var.get():
+                message += " Recurring bill created."
+            self.status_label.config(
+                text=message,
+                style="Success.TLabel"
+            )
+            self.after(
+                3000,
+                lambda: self.status_label.config(text="")
+            )  
         except Exception as ex:
-
             messagebox.showerror(
                 "Error",
                 str(ex)
@@ -272,12 +337,9 @@ class AddTransactionView(ttk.Frame):
     # --------------------------------------------------
 
     def go_back(self):
-
         from ui.views.dashboard_view import DashboardView
-
         for widget in self.parent.winfo_children():
             widget.destroy()
-
         DashboardView(
             self.parent,
             self.controller

@@ -1,8 +1,5 @@
 from tkinter import ttk
-
 from ui.theme import apply_dark_theme
-from ui.views.category_view import CategoryView
-
 
 class DashboardView(ttk.Frame):
 
@@ -51,6 +48,20 @@ class DashboardView(ttk.Frame):
 
         ttk.Button(
             self,
+            text="Manage Budgets",
+            command=self.open_budgets,
+            style="Dark.TButton"
+        ).pack(pady=10)
+
+        ttk.Button(
+            self,
+            text="Recurring Bills",
+            command=self.open_recurring_bills,
+            style="Dark.TButton"
+        ).pack(pady=10)
+
+        ttk.Button(
+            self,
             text="Monthly Summary",
             command=self.open_summary,
             style="Dark.TButton"
@@ -60,13 +71,6 @@ class DashboardView(ttk.Frame):
             self,
             text="Spending Pie Chart",
             command=self.open_pie,
-            style="Dark.TButton"
-        ).pack(pady=10)
-
-        ttk.Button(
-            self,
-            text="Manage Budgets",
-            command=self.open_budgets,
             style="Dark.TButton"
         ).pack(pady=10)
 
@@ -82,6 +86,10 @@ class DashboardView(ttk.Frame):
         from ui.views.transaction_table_view import TransactionTableView
         self._swap(TransactionTableView)
 
+    def open_recurring_bills(self):
+        from ui.views.recurring_bills_view import RecurringBillsView
+        self._swap(RecurringBillsView)
+
     def open_summary(self):
         from ui.views.summary_view import SummaryView
         self._swap(SummaryView)
@@ -91,13 +99,12 @@ class DashboardView(ttk.Frame):
         self._swap(PieChartView)
 
     def open_budgets(self):
+        from ui.views.category_view import CategoryView
         self._swap(CategoryView)
 
     def _swap(self, view_class):
-
         for widget in self.parent.winfo_children():
             widget.destroy()
-
         view_class(
             self.parent,
             self.controller

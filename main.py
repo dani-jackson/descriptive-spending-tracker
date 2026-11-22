@@ -22,6 +22,7 @@ def main():
         root,
         repository
     )
+    controller.generate_recurring_transactions()
 
     DashboardView(
         root,
