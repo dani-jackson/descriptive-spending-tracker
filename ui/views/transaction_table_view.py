@@ -105,7 +105,6 @@ class TransactionTableView(ttk.Frame):
             padx=10,
             pady=10
         )
-
         columns = (
             "id",
             "date",
@@ -115,54 +114,46 @@ class TransactionTableView(ttk.Frame):
             "merchant",
             "amount"
         )
-
         self.tree = ttk.Treeview(
             table_frame,
             columns=columns,
             show="headings",
             style="Dark.Treeview"
         )
-
         self.tree.pack(
             fill="both",
             expand=True
         )
-
         self.tree.heading(
             "date",
             text="Date",
             anchor="w",
             command=lambda: self.sort_by("date")
         )
-
         self.tree.heading(
             "type",
             text="Type",
             anchor="w",
             command=lambda: self.sort_by("type")
         )
-
         self.tree.heading(
             "description",
             text="Description",
             anchor="w",
             command=lambda: self.sort_by("description")
         )
-
         self.tree.heading(
             "account",
             text="Account",
             anchor="w",
             command=lambda: self.sort_by("account")
         )
-
         self.tree.heading(
             "merchant",
             text="Merchant",
             anchor="w",
             command=lambda: self.sort_by("merchant")
         )
-
         self.tree.heading(
             "amount",
             text="Amount",
@@ -174,38 +165,31 @@ class TransactionTableView(ttk.Frame):
         # Hidden ID column
         #
         self.tree.heading("id", text="ID")
-
         self.tree.column(
             "id",
             width=0,
             stretch=False
         )
-
         self.tree.column(
             "date",
             width=120
         )
-
         self.tree.column(
             "type",
             width=120
         )
-
         self.tree.column(
             "description",
             width=350
         )
-
         self.tree.column(
             "account",
             width=120
         )
-
         self.tree.column(
             "merchant",
             width=180
         )
-
         self.tree.column(
             "amount",
             width=120
@@ -233,10 +217,19 @@ class TransactionTableView(ttk.Frame):
             padx=5
         )
 
+        ttk.Button(
+           button_frame,
+           text="Edit Selected",
+           command=self.edit_selected,
+           style="Dark.TButton"
+        ).pack(
+            side="left",
+            padx=5
+        )
+
         self.transactions = (
             self.controller.get_transactions()
         )
-
         self.populate_table()
 
     # ----------------------------------------
@@ -244,26 +237,20 @@ class TransactionTableView(ttk.Frame):
     # ----------------------------------------
 
     def populate_table(self, filtered=None):
-
         for item in self.tree.get_children():
             self.tree.delete(item)
-
         data = (
             filtered
             if filtered is not None
             else self.transactions
         )
-
         data = sorted(
             data,
             key=lambda t: parse_date(t.date),
             reverse=self.sort_reverse
         )
-
         for tx in data:
-
             tag = tx.transaction_type.lower()
-
             self.tree.insert(
                 "",
                 "end",
@@ -278,17 +265,14 @@ class TransactionTableView(ttk.Frame):
                 ),
                 tags=(tag,)
             )
-
         self.tree.tag_configure(
             "deposit",
             foreground="#7CFC00"
         )
-
         self.tree.tag_configure(
             "withdrawal",
             foreground="#FFA500"
         )
-
         self.tree.tag_configure(
             "purchase",
             foreground="#FF5555"
@@ -299,102 +283,102 @@ class TransactionTableView(ttk.Frame):
     # ----------------------------------------
 
     def get_selected(self):
-
         selection = self.tree.selection()
-
         if not selection:
             return None
-
         return self.tree.item(
             selection[0]
         )["values"]
 
+    def populate_transaction_form(self, transaction):
+        self.desc_entry.delete(0, "end")
+        self.desc_entry.insert(0, transaction.description)
+        self.merchant_entry.delete(0, "end")
+        self.merchant_entry.insert(0, transaction.merchant)
+        self.amount_entry.delete(0, "end")
+        self.amount_entry.insert(0, str(transaction.amount))
+        self.category_dropdown.set(transaction.category)
+        self.date_entry.set_date(transaction.date)
+        self.type_dropdown.set(transaction.transaction_type)
+        self.account_dropdown.set(transaction.account.name)
+
+
     # ----------------------------------------
-    # DELETE
+    # DELETE / EDIT
     # ----------------------------------------
 
     def delete_selected(self):
-
         row = self.get_selected()
-
         if not row:
             messagebox.showwarning(
                 "No Selection",
                 "Select a transaction first."
             )
             return
-
         tx_id = row[0]
-
         confirm = messagebox.askyesno(
             "Delete Transaction",
             "Are you sure?"
         )
-
         if not confirm:
             return
-
-        self.controller.delete_transaction(
-            tx_id
-        )
-
-        self.transactions = (
-            self.controller.get_transactions()
-        )
-
+        self.controller.delete_transaction(tx_id)
+        self.transactions = (self.controller.get_transactions())
         self.populate_table()
 
+    def edit_selected(self):
+        row = self.get_selected()
+        if not row:
+            messagebox.showwarning(
+                "No Selection",
+                "Select a transaction first."
+            )
+            return
+        tx_id = row[0]
+        transaction = next(
+            (
+                tx
+                for tx in self.transactions
+                if tx.id == tx_id
+            ),
+            None
+        )
+        if transaction is None:
+            return
+        self.controller.editing_transaction = transaction
+        from ui.views.add_transaction_view import AddTransactionView
+        for widget in self.parent.winfo_children():
+            widget.destroy()
+        AddTransactionView(
+            self.parent,
+            self.controller
+        ).pack(
+            fill="both",
+            expand=True
+        )
+    
     # ----------------------------------------
     # SORTING
     # ----------------------------------------
 
     def sort_by(self, column):
-
         if column == "amount":
-
             key_func = lambda t: t.amount
-
         elif column == "date":
-
-            key_func = lambda t: parse_date(
-                t.date
-            )
-
+            key_func = lambda t: parse_date(t.date)
         elif column == "type":
-
-            key_func = lambda t: (
-                t.transaction_type.lower()
-            )
-
+            key_func = lambda t: (t.transaction_type.lower())
         elif column == "merchant":
-
-            key_func = lambda t: (
-                t.merchant or ""
-            ).lower()
-
+            key_func = lambda t: (t.merchant or "").lower()
         else:
-
-            key_func = lambda t: (
-                getattr(
-                    t,
-                    column,
-                    ""
-                )
-            ).lower()
-
-        self.sort_reverse = (
-            not self.sort_reverse
-        )
-
+            key_func = lambda t: (getattr(t, column, "")).lower()
+        self.sort_reverse = (not self.sort_reverse)
         sorted_data = sorted(
             self.transactions,
             key=key_func,
             reverse=self.sort_reverse
         )
-
-        self.populate_table(
-            sorted_data
-        )
+        self.populate_table(sorted_data)
 
     # ----------------------------------------
     # FILTERING

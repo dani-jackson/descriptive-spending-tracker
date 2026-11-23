@@ -18,6 +18,7 @@ class AppController:
         self.tx_service = TransactionService(repository)
         self.summary_service = SummaryService(repository)
         self.budget_service = BudgetService(repository)
+        self.editing_transaction = None
 
     # ------------------------
     # Accounts
