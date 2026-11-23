@@ -5,6 +5,7 @@ from util.date_utils import parse_date
 from ui.theme import apply_dark_theme
 
 
+
 class TransactionTableView(ttk.Frame):
 
     def __init__(self, parent, controller):
@@ -110,6 +111,7 @@ class TransactionTableView(ttk.Frame):
             "date",
             "type",
             "description",
+            "account",
             "merchant",
             "amount"
         )
@@ -129,30 +131,42 @@ class TransactionTableView(ttk.Frame):
         self.tree.heading(
             "date",
             text="Date",
+            anchor="w",
             command=lambda: self.sort_by("date")
         )
 
         self.tree.heading(
             "type",
             text="Type",
+            anchor="w",
             command=lambda: self.sort_by("type")
         )
 
         self.tree.heading(
             "description",
             text="Description",
+            anchor="w",
             command=lambda: self.sort_by("description")
+        )
+
+        self.tree.heading(
+            "account",
+            text="Account",
+            anchor="w",
+            command=lambda: self.sort_by("account")
         )
 
         self.tree.heading(
             "merchant",
             text="Merchant",
+            anchor="w",
             command=lambda: self.sort_by("merchant")
         )
 
         self.tree.heading(
             "amount",
             text="Amount",
+            anchor="w",
             command=lambda: self.sort_by("amount")
         )
 
@@ -179,7 +193,12 @@ class TransactionTableView(ttk.Frame):
 
         self.tree.column(
             "description",
-            width=250
+            width=350
+        )
+
+        self.tree.column(
+            "account",
+            width=120
         )
 
         self.tree.column(
@@ -189,7 +208,7 @@ class TransactionTableView(ttk.Frame):
 
         self.tree.column(
             "amount",
-            width=100
+            width=120
         )
 
         # ----------------------------------------
@@ -253,6 +272,7 @@ class TransactionTableView(ttk.Frame):
                     tx.date,
                     tx.transaction_type,
                     tx.description,
+                    self.controller.get_account_name(tx.account_id),
                     tx.merchant or "",
                     f"${tx.amount:.2f}"
                 ),
@@ -403,6 +423,7 @@ class TransactionTableView(ttk.Frame):
             if text in t.description.lower()
             or text in t.transaction_type.lower()
             or text in (t.merchant or "").lower()
+            or text in self.controller.get_account_name(t.account_id).lower()
         ]
 
         self.populate_table(filtered)

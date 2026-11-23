@@ -24,12 +24,10 @@ class AppController:
     # ------------------------
 
     def add_account(self, name, account_type):
-
         account = Account(
             name=name,
             account_type=account_type
         )
-
         return self.repository.add_account(account)
 
     def update_account(
@@ -38,19 +36,22 @@ class AppController:
         name,
         account_type
     ):
-
         self.repository.update_account(
             account_id,
             name,
             account_type
         )
 
-    def get_accounts(self):
+    def get_account(self, account_id):
+        return self.repository.get_account(account_id)
 
+    def get_account_name(self, account_id):
+        return self.repository.get_account_name(account_id)
+
+    def get_accounts(self):
         return self.repository.get_all_accounts()
 
     def delete_account(self, account_id):
-
         self.repository.delete_account(account_id)
 
     # ------------------------

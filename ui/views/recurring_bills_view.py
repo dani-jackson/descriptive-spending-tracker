@@ -35,6 +35,7 @@ class RecurringBillsView(ttk.Frame):
             style="Dark.TButton"
         ).pack(side="right")
 
+
     # --------------------------------------------------
     # TREE VIEW
     # --------------------------------------------------
@@ -63,24 +64,52 @@ class RecurringBillsView(ttk.Frame):
             style="Dark.Treeview"
         )
 
+        self.tree.column(
+            "description",
+            width=350,
+            anchor="w"
+        )
+
+        self.tree.column(
+            "amount",
+            width=120,
+            anchor="e"
+        )
+
+        self.tree.column(
+            "day",
+            width=80,
+            anchor="center"
+        )
+
+        self.tree.column(
+            "active",
+            width=100,
+            anchor="center"
+        )
+
         self.tree.heading(
             "description",
-            text="Description"
+            text="Description",
+            anchor="w"
         )
 
         self.tree.heading(
             "amount",
-            text="Amount"
+            text="Amount",
+            anchor="e"
         )
 
         self.tree.heading(
             "day",
-            text="Day"
+            text="Day",
+            anchor="center"
         )
 
         self.tree.heading(
             "active",
-            text="Active"
+            text="Active",
+            anchor="center"
         )
 
         self.tree.pack(
@@ -89,6 +118,8 @@ class RecurringBillsView(ttk.Frame):
             padx=10,
             pady=10
         )
+
+        self.refresh()
 
     # --------------------------------------------------
     # BUTTONS
@@ -127,6 +158,10 @@ class RecurringBillsView(ttk.Frame):
             *self.tree.get_children()
         )
         bills = self.controller.get_all_recurring_bills()
+        bills = sorted(
+            bills,
+            key=lambda bill: bill["day_of_month"]
+        )
         for bill in bills:
             self.tree.insert(
                 "",

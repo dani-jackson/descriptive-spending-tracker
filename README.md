@@ -170,7 +170,7 @@ Descriptive Spending Tracker
 │
 └── util
     └── date_utils.py
-
+    
 ## Technologies Used
 - Python 3
 - Tkinter

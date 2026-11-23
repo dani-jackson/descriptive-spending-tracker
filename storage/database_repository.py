@@ -113,6 +113,20 @@ class DatabaseRepository:
             name=row["name"],
             account_type=row["account_type"]
         )
+    
+    def get_account_name(self, account_id):
+    
+        row = self.conn.execute("""
+            SELECT name
+            FROM accounts
+            WHERE id = ?
+        """, (account_id,)).fetchone()
+    
+        if row is None:
+            return None
+    
+        return row["name"]
+        
 
     def get_all_accounts(self):
 

@@ -149,46 +149,32 @@ class SummaryView(ttk.Frame):
         )
 
         for category in sorted(totals.keys()):
-
             spent = totals[category]
-
             pct = percentages.get(
                 category,
                 0
             )
-
             budget = budget_lookup.get(
                 category
             )
-
             budget_str = (
                 f"${budget:.2f}"
                 if budget is not None
                 else "-"
             )
-
             status = ""
-
             tag = None
-
             if budget is not None:
-
                 if spent > budget:
-
                     status = (
                         f"OVER ${spent - budget:.2f}"
                     )
-
                     tag = "over"
-
                 else:
-
                     status = (
                         f"${budget - spent:.2f} left"
                     )
-
                     tag = "under"
-
             line = (
                 f"{category:<20}"
                 f"${spent:>11.2f}"
@@ -196,45 +182,20 @@ class SummaryView(ttk.Frame):
                 f"{pct:>11.1f}%"
                 f"{status:>15}"
             )
-
             if tag:
-
                 text.insert(
                     "end",
                     line + "\n",
                     tag
                 )
-
             else:
-
                 text.insert(
                     "end",
                     line + "\n"
                 )
-
         text.config(
             state="disabled"
         )
-
-        # ------------------------------------
-        # BACK BUTTON
-        # ------------------------------------
-
-        bottom = ttk.Frame(
-            self,
-            style="Dark.TFrame"
-        )
-
-        bottom.pack(
-            pady=10
-        )
-
-        ttk.Button(
-            bottom,
-            text="Back",
-            command=self.go_back,
-            style="Dark.TButton"
-        ).pack()
 
     # ------------------------------------
     # NAVIGATION
